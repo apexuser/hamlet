@@ -41,16 +41,68 @@ Then we need to decide how many cases we need to test procedure. There is trhee 
    a    b    c    expected x1   expected x2    exception
  ------------------------------------------------------------
    1   -3    2              1             2
-   1   -4    4             -2            -2
+   1   -4    4              2             2
    1    2    3              -             -    no_roots
    0    5    7              -             -    not_a_quadric
 
-OK, lets create some records.
+OK, let's create some records.
 
 Code:
 
-insert into hamlet.test_case(test_case_id, test_suite_id, test_case_description)
-  select hamlet.hamlet.nextval, ts.test_suite_id, '2 roots' 
-  from hamlet.test_suite ts
-  where ts.test_suite_description = 'Testing procedure for math_pkg.test_roots';
+declare
+  test_suite number;
+  test_case  number;
 
+begin
+  -- create new test suite:
+  test_suite := hamlet.hamlet.new_test_suite('Testing procedure for solving quadric equations');
+
+  -- create new test case for given test suite: 
+  test_case := hamlet.hamlet.new_test_case(test_suite, 'Two roots');
+  
+  -- create parameters for given test case:
+  -- input parameters for procedure:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'A',  1, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'B', -3, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'C',  2, test_case);
+  -- expected result of procedure:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X1', 1, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X2', 2, test_case);
+
+  -- next test case:
+  test_case := hamlet.hamlet.new_test_case(test_suite, 'One root');
+  -- input parameters for procedure:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'A',  1, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'B', -4, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'C',  4, test_case);
+  -- expected result of procedure:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X1', 2, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X2', 2, test_case);
+
+  -- next test case:
+  test_case := hamlet.hamlet.new_test_case(test_suite, 'One root');
+  -- input parameters for procedure:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'A', 1, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'B', 2, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'C', 3, test_case);
+  -- expected result of procedure:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X1', null, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X2', null, test_case);
+  -- also we expect exception:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_ERR, hamlet.hamlet.PR_EXCEPTION, 'Equation has no roots', test_case);
+
+  -- and last test case:
+  test_case := hamlet.hamlet.new_test_case(test_suite, 'One root');
+  -- input parameters for procedure:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'A', 0, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'B', 5, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'C', 7, test_case);
+  -- expected result of procedure:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X1', null, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X2', null, test_case);
+  -- also we expect exception:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_ERR, hamlet.hamlet.PR_EXCEPTION, 'Equation is not quadric', test_case);
+
+
+end;
+/
