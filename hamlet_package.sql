@@ -8,6 +8,7 @@ PR_IN  constant varchar2(3) := 'IN';
 PR_EXP constant varchar2(3) := 'EXP';
 PR_ACT constant varchar2(3) := 'ACT';
 PR_ERR constant varchar2(3) := 'ERR';
+PR_EXCEPTION constant varchar2(10) := 'EXCEPTION';
 
 procedure run_testsuite(p_testsuite_id number);
 
@@ -156,7 +157,7 @@ begin
              execute immediate get_run_string(i.script_package, i.script_proc);
            exception
              when others then
-               set_exec_param(PR_ACT, 'EXCEPTION', SQLCODE || ': ' || SQLERRM || chr(10) || dbms_utility.format_error_backtrace);
+               set_exec_param(PR_ACT, PR_EXCEPTION, SQLCODE || ': ' || SQLERRM || chr(10) || dbms_utility.format_error_backtrace);
            end;
         end if;
         testsuite_teardown(p_testsuite_id);
