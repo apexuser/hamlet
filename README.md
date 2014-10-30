@@ -1,4 +1,7 @@
-hamlet
-======
+Consepts
 
-PL/SQL testing framework
+This framework is created for testing PL/SQL code. It allows you to run your code with different arguments, set up environment, analyze results and store all of that in your database. 
+Basic thing here is a test. For example, lets say we have a function with one argument. We invoke that function once, pass some argument value and receive a result. It is a simplest testcase. Information about testcases is stored in the table TEST_CASE. But usually one function run is insuffisient for good testing. We need to make some runs with different arguments. All this runs we can combine in one testsuite. Information about test suites is stored in table TEST_SUITE. So, if we want to test our function, we have to prepare a testsuite, that consist of: list of parameters to pass to the function, list of expected function's results, corresponding to input parameters, and test script, that will do all the work - take parameters, pass them to the function, get results. Such scripts are stored in table SCRIPT. Well, writing scripts in table cells is not as convenient as in your favorite IDE, so I recommend write scripts as common procedures or packages, and put to SCRIPT table only invocation of them. Next important thing is parameters. Parameters are stored in table TEST_PARAM. If you had inserted them once, you don't need to do this work once again - every time when you run test script, it will take this parameters from table.
+Lets see now what happens when we run our test. There are tables with name TEST_EXECUTION and EXECUTION_PARAM, where we will store information about all our test runs. Every time when our test script run, framework inserts a row in table TEST_EXECUTION with information about who and when did that, and unique number of test run. Also framework inserts couple of rows in EXECUTION_PARAM table. This rows contain information about parameters, passed to a function, expected and actual function result.
+
+See file examples.txt for more useful information.
