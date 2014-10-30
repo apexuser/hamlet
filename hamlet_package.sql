@@ -23,6 +23,9 @@ procedure get_exec_param(p_name varchar2, p_value out number);
 procedure get_exec_param(p_name varchar2, p_value out varchar2);
 procedure get_exec_param(p_name varchar2, p_value out date);
 
+function new_testsuite(p_description varchar2, p_parent_id number default null) return number;
+function new_testcase(p_testsuite_id number, p_description varchar2) return number;
+
 procedure grant_execution_to_user(p_username in varchar2);
 procedure grant_develop_to_user(p_username in varchar2);
  
@@ -332,6 +335,26 @@ begin
                                       ', p_type = ' || PR_IN || ', p_name = ' || p_name);
 end;
 
+function new_testsuite(p_description varchar2, p_parent_id number default null) return number is
+  new_id number;
+begin
+  new_id := hamlet_seq.nextval;
+  
+  insert into test_suite (test_suite_id, parent_id, test_suite_description) values (new_id, p_parent_id, p_description);
+  
+  return new_id;
+end;
+
+function new_testcase(p_testsuite_id number, p_description varchar2) return number is
+  new_id number;
+begin
+  new_id := hamlet_seq.nextval;
+  
+  insert into test_case (test_case_id, test_suite_id, test_case_description) values (new_id, p_testsuite_id, p_description);
+  
+  return new_id;
+end;
+
 procedure grant_execution_to_user(p_username in varchar2) is
 begin
   execute immediate 'grant select on hamlet_seq to ' || p_username;
@@ -357,9 +380,6 @@ begin
   execute immediate 'grant all on hamlet.testing_log to '     || p_username;
   execute immediate 'grant all on hamlet.hamlet to '          || p_username;
 end;
-
-/*function get_param(p_name varchar2, p_test_case_id number, p_type varchar2) return varchar2;
-function get_param(p_name varchar2, p_test_case_id number, p_type varchar2) return date;*/
 
 end hamlet;
 /
