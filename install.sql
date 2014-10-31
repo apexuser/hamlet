@@ -77,4 +77,34 @@ alter table hamlet.script          add constraint fk_script_suite   foreign key 
 alter table hamlet.testing_log     add constraint fk_log_suite      foreign key (testsuite_id)      references hamlet.test_suite    (test_suite_id);
 alter table hamlet.testing_log     add constraint fk_log_exec       foreign key (execution_id)      references hamlet.test_execution(test_execution_id);
 
+create or replace view test_results as
+select ts.test_suite_id,
+       ts.test_suite_description description,
+       te.test_execution_id,
+       tc.test_case_id,
+       te.execution_date,
+       tc.test_case_description, 
+       listagg(case when ep.parameter_type = 'IN' 
+                    then ep.parameter_name || ' = ' || nvl(to_char(ep.num_value), nvl(ep.str_value, to_char(ep.dat_value, 'dd.mm.yyyy')))
+                    else null end, chr(10)) within group (order by ep.parameter_name) exec_parameters,
+       listagg(case when ep.parameter_type = 'EXP'
+                    then ep.parameter_name || ' = ' || nvl(to_char(ep.num_value), nvl(ep.str_value, to_char(ep.dat_value, 'dd.mm.yyyy')))
+                    else null end, chr(10)) within group (order by ep.parameter_name) expected_parameters,
+       listagg(case when ep.parameter_type in ('ACT', 'ERR')
+                    then ep.parameter_name || ' = ' || nvl(to_char(ep.num_value), nvl(ep.str_value, to_char(ep.dat_value, 'dd.mm.yyyy')))
+                    else null end, chr(10)) within group (order by ep.parameter_name) actual_parameters
+  from hamlet.test_case tc,
+       hamlet.test_suite ts,
+       hamlet.execution_param ep,
+       (select t.test_execution_id, t.test_suite_id, t.execution_date, 
+               row_number() over (partition by t.test_suite_id order by t.execution_date desc) rn
+          from hamlet.test_execution t) te
+ where ep.test_case_id = tc.test_case_id
+   and te.test_suite_id = ts.test_suite_id
+   and ep.test_execution_id = te.id
+   and te.rn = 1
+ group by ts.test_suite_description, 
+          'Test ID = ' || to_char(te.id) || ' (' || to_char(tc.test_case_id) || ', ' || to_char(te.execution_date, 'HH24:MI:SS') || ')',
+          tc.test_case_description;
+
 @hamlet_package.sql
