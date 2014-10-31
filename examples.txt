@@ -7,6 +7,9 @@ create or replace package math_pkg is
 no_roots      exception;
 not_a_quadric exception;
 
+PRAGMA EXCEPTION_INIT (no_roots,      -20001);
+PRAGMA EXCEPTION_INIT (not_a_quadric, -20002);
+
 procedure get_roots(a in number, b in number, c in number, x1 out number, x2 out number);
 
 end math_pkg;
@@ -20,7 +23,7 @@ begin
   d := b * b - 4 * a * c;
 
   if d < 0 then
-     raise no_roots;
+     raise_application_error(-20001, 'Equation has no roots');
   end if;
  
   x1 := (b + sqrt(d)) / (2 * a);
@@ -30,13 +33,47 @@ end;
 end math_pkg;
 /
 
-First of all, we need to create a testsuite:
+Now we need script that will run our procedure. Script have to take parameters, pass them to procedure, get output parameters and save them. There is no requirements to script: it can be anonymous block directly in SCRIPT table, stand-alone procedure (without parameters) or procedure in package. For example, let's create a package, that will do this work:
 
-Code:
+create or replace package test_package is
 
-insert into hamlet.test_suite(test_suite_id, parent_id, test_suite_description) values (hamlet.hamlet_seq.nextval, null, 'Testing procedure for math_pkg.test_roots');
+procedure test_quadric_equation;
 
-Then we need to decide how many cases we need to test procedure. There is trhee possibilities in quadratic equations: no roots, one root and two roots. Also we want to throw exception in a case when a = 0 (i. e. this is not a quadric equation). So we decided, that four test cases will be sufficient:
+end test_package;
+/
+
+create or replace package body test_package is
+
+procedure test_quadric_equation is
+  a  number;
+  b  number;
+  c  number;
+  x1 number;
+  x2 number;
+begin
+  -- read parameter's values from database:
+  hamlet.hamlet.get_exec_param('A', a);
+  hamlet.hamlet.get_exec_param('B', b);
+  hamlet.hamlet.get_exec_param('C', c);
+
+  -- execute procedure:
+  begin
+    math_pkg.get_roots(a, b, c, x1, x2);
+  exception
+    when others then
+      -- in case of exception write information about it in table EXECUTION_PARAM
+      hamlet.hamlet.set_exec_param(hamlet.hamlet.PR_ERR, hamlet.hamlet.PR_EXCEPTION, SQLERRM);
+  end;
+
+  -- write to database results of calculation:
+  hamlet.hamlet.set_exec_param(hamlet.hamlet.PR_ACT, 'X1', x1);
+  hamlet.hamlet.set_exec_param(hamlet.hamlet.PR_ACT, 'X2', x2);
+end;
+
+end test_package;
+/
+
+Then we need to create a testsuite and decide, how many cases we need to test procedure. There is three possibilities in quadratic equations: no roots, one root and two roots. Also we want to throw exception in a case when a = 0 (i. e. this is not a quadric equation). So we decided, that four test cases will be sufficient:
 
    a    b    c    expected x1   expected x2    exception
  ------------------------------------------------------------
@@ -52,13 +89,14 @@ Code:
 declare
   test_suite number;
   test_case  number;
-
+  x1 number;
+  x2 number;
 begin
   -- create new test suite:
-  test_suite := hamlet.hamlet.new_test_suite('Testing procedure for solving quadric equations');
+  test_suite := hamlet.hamlet.new_testsuite('Testing procedure for solving quadric equations');
 
   -- create new test case for given test suite: 
-  test_case := hamlet.hamlet.new_test_case(test_suite, 'Two roots');
+  test_case := hamlet.hamlet.new_testcase(test_suite, 'Two roots');
   
   -- create parameters for given test case:
   -- input parameters for procedure:
@@ -70,7 +108,7 @@ begin
   hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X2', 2, test_case);
 
   -- next test case:
-  test_case := hamlet.hamlet.new_test_case(test_suite, 'One root');
+  test_case := hamlet.hamlet.new_testcase(test_suite, 'One root');
   -- input parameters for procedure:
   hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'A',  1, test_case);
   hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'B', -4, test_case);
@@ -80,29 +118,45 @@ begin
   hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X2', 2, test_case);
 
   -- next test case:
-  test_case := hamlet.hamlet.new_test_case(test_suite, 'One root');
+  test_case := hamlet.hamlet.new_testcase(test_suite, 'No roots');
   -- input parameters for procedure:
   hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'A', 1, test_case);
   hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'B', 2, test_case);
   hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'C', 3, test_case);
   -- expected result of procedure:
-  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X1', null, test_case);
-  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X2', null, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X1', x1, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X2', x2, test_case);
   -- also we expect exception:
   hamlet.hamlet.set_param(hamlet.hamlet.PR_ERR, hamlet.hamlet.PR_EXCEPTION, 'Equation has no roots', test_case);
 
   -- and last test case:
-  test_case := hamlet.hamlet.new_test_case(test_suite, 'One root');
+  test_case := hamlet.hamlet.new_testcase(test_suite, 'Not a quadric equation');
   -- input parameters for procedure:
   hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'A', 0, test_case);
   hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'B', 5, test_case);
   hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'C', 7, test_case);
   -- expected result of procedure:
-  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X1', null, test_case);
-  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X2', null, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X1', x1, test_case);
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'X2', x2, test_case);
   -- also we expect exception:
   hamlet.hamlet.set_param(hamlet.hamlet.PR_ERR, hamlet.hamlet.PR_EXCEPTION, 'Equation is not quadric', test_case);
 
+  -- and final - create script entries:
+  insert into hamlet.script(script_id, script_description, run_seq, script_type, test_suite_id, script_package, script_proc)
+  values (hamlet.hamlet_seq.nextval, 'Script for testing math_pkg.get_roots', 1, hamlet.hamlet.SC_BODY, 
+          test_suite, 'test_package', 'test_quadric_equation');
 
+  commit;
+  dbms_output.put_line('Preparation script successfully finished.');
+end;
+/
+
+Now, as we can see in our console output, all preparations is done. It's time to run script!
+We just need to select rows from TEST_SUITE table to know our test suite ID.
+
+Code:
+
+begin
+  hamlet.hamlet.run_testsuite(1);
 end;
 /
