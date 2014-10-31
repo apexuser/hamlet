@@ -1,18 +1,24 @@
-create user hamlet identified by hamlet;
+create user &&USER identified by &&PASSWORD
+  default tablespace &&tablespace;
 
-create sequence hamlet.hamlet_seq;
+grant connect to &&USER;
+grant resource to &&USER;
 
-create table hamlet.test_suite( 
+connect &&USER/&&PASSWORD
+
+create sequence hamlet_seq;
+
+create table test_suite( 
   test_suite_id          number not null,
   parent_id              number,
   test_suite_description varchar2(1000));
   
-create table hamlet.test_case( 
+create table test_case( 
   test_case_id          number not null,
   test_suite_id         number,
   test_case_description varchar2(4000));
 
-create table hamlet.test_param(
+create table test_param(
   test_param_id  number not null,
   test_case_id   number,
   parameter_type varchar2(3),
@@ -22,13 +28,13 @@ create table hamlet.test_param(
   dat_value      date,
   lob_value      clob);
 
-create table hamlet.test_execution(
+create table test_execution(
   test_execution_id number not null,
   test_suite_id     number,
   execution_date    date,
   execution_user    varchar2(100));
 
-create table hamlet.execution_param(
+create table execution_param(
   execution_param_id number,
   test_execution_id  number,
   test_case_id       number,
@@ -39,7 +45,7 @@ create table hamlet.execution_param(
   dat_value          date,
   lob_value          clob);
 
-create table hamlet.script(
+create table script(
   script_id          number not null,
   script_body        clob,
   script_description varchar2(1000),
@@ -49,7 +55,7 @@ create table hamlet.script(
   script_package     varchar2(30),
   script_proc        varchar2(30));
 
-create table hamlet.testing_log(
+create table testing_log(
   log_id       number not null,
   place        varchar2(255),
   message      varchar2(4000),
@@ -60,21 +66,24 @@ create table hamlet.testing_log(
   executed_by  varchar2(100),
   executed_on  date);
   
-alter table hamlet.test_suite      add constraint pk_test_suite      primary key (test_suite_id);
-alter table hamlet.test_case       add constraint pk_test_case       primary key (test_case_id);
-alter table hamlet.test_execution  add constraint pk_test_execution  primary key (test_execution_id);
-alter table hamlet.script          add constraint pk_script          primary key (script_id);
-alter table hamlet.test_param      add constraint pk_test_param      primary key (test_param_id);
-alter table hamlet.execution_param add constraint pk_execution_param primary key (execution_param_id);
-alter table hamlet.testing_log     add constraint pk_log             primary key (log_id);
+alter table test_suite      add constraint pk_test_suite      primary key (test_suite_id);
+alter table test_case       add constraint pk_test_case       primary key (test_case_id);
+alter table test_execution  add constraint pk_test_execution  primary key (test_execution_id);
+alter table script          add constraint pk_script          primary key (script_id);
+alter table test_param      add constraint pk_test_param      primary key (test_param_id);
+alter table execution_param add constraint pk_execution_param primary key (execution_param_id);
+alter table testing_log     add constraint pk_log             primary key (log_id);
 
-alter table hamlet.test_suite      add constraint fk_parent_suite   foreign key (parent_id)         references hamlet.test_suite    (test_suite_id);
-alter table hamlet.test_case       add constraint fk_case_suite     foreign key (test_suite_id)     references hamlet.test_suite    (test_suite_id);
-alter table hamlet.test_execution  add constraint fk_exec_suite     foreign key (test_suite_id)     references hamlet.test_suite    (test_suite_id);
-alter table hamlet.test_param      add constraint fk_param_case     foreign key (test_case_id)      references hamlet.test_case     (test_case_id);
-alter table hamlet.execution_param add constraint fk_execparam_exec foreign key (test_execution_id) references hamlet.test_execution(test_execution_id);
-alter table hamlet.script          add constraint fk_script_suite   foreign key (test_suite_id)     references hamlet.test_suite    (test_suite_id);
-alter table hamlet.testing_log     add constraint fk_log_suite      foreign key (testsuite_id)      references hamlet.test_suite    (test_suite_id);
-alter table hamlet.testing_log     add constraint fk_log_exec       foreign key (execution_id)      references hamlet.test_execution(test_execution_id);
+alter table test_suite      add constraint fk_parent_suite   foreign key (parent_id)         references test_suite    (test_suite_id);
+alter table test_case       add constraint fk_case_suite     foreign key (test_suite_id)     references test_suite    (test_suite_id);
+alter table test_execution  add constraint fk_exec_suite     foreign key (test_suite_id)     references test_suite    (test_suite_id);
+alter table test_param      add constraint fk_param_case     foreign key (test_case_id)      references test_case     (test_case_id);
+alter table execution_param add constraint fk_execparam_exec foreign key (test_execution_id) references test_execution(test_execution_id);
+alter table script          add constraint fk_script_suite   foreign key (test_suite_id)     references test_suite    (test_suite_id);
+alter table testing_log     add constraint fk_log_suite      foreign key (testsuite_id)      references test_suite    (test_suite_id);
+alter table testing_log     add constraint fk_log_exec       foreign key (execution_id)      references test_execution(test_execution_id);
 
 @hamlet_package.sql
+
+quit
+/

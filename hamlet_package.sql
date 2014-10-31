@@ -1,4 +1,4 @@
-create or replace package hamlet.hamlet is
+create or replace package hamlet is
 
 SC_SETUP    constant varchar2(10) := 'SETUP';
 SC_TEARDOWN constant varchar2(10) := 'TEARDOWN';
@@ -33,7 +33,7 @@ procedure grant_develop_to_user(p_username in varchar2);
 end hamlet;
 /
 
-create or replace package body hamlet.hamlet is
+create or replace package body hamlet is
 
   current_execution number;
   current_testcase  number;
@@ -360,27 +360,27 @@ end;
 procedure grant_execution_to_user(p_username in varchar2) is
 begin
   execute immediate 'grant select on hamlet_seq to ' || p_username;
-  execute immediate 'grant select, insert, update on hamlet.test_suite to '      || p_username;
-  execute immediate 'grant select, insert, update on hamlet.test_case to '       || p_username;
-  execute immediate 'grant select, insert, update on hamlet.test_param to '      || p_username;
-  execute immediate 'grant select, insert, update on hamlet.test_execution to '  || p_username;
-  execute immediate 'grant select, insert, update on hamlet.execution_param to ' || p_username;
-  execute immediate 'grant select, insert, update on hamlet.script to '          || p_username;
-  execute immediate 'grant select, insert, update on hamlet.testing_log to '     || p_username;
-  execute immediate 'grant execute on hamlet.hamlet to '                         || p_username;
+  execute immediate 'grant select, insert, update on test_suite to '      || p_username;
+  execute immediate 'grant select, insert, update on test_case to '       || p_username;
+  execute immediate 'grant select, insert, update on test_param to '      || p_username;
+  execute immediate 'grant select, insert, update on test_execution to '  || p_username;
+  execute immediate 'grant select, insert, update on execution_param to ' || p_username;
+  execute immediate 'grant select, insert, update on script to '          || p_username;
+  execute immediate 'grant select, insert, update on testing_log to '     || p_username;
+  execute immediate 'grant execute on hamlet to '                         || p_username;
 end;
 
 procedure grant_develop_to_user(p_username in varchar2) is
 begin
-  execute immediate 'grant all on hamlet_seq to ' || p_username;
-  execute immediate 'grant all on hamlet.test_suite to '      || p_username;
-  execute immediate 'grant all on hamlet.test_case to '       || p_username;
-  execute immediate 'grant all on hamlet.test_param to '      || p_username;
-  execute immediate 'grant all on hamlet.test_execution to '  || p_username;
-  execute immediate 'grant all on hamlet.execution_param to ' || p_username;
-  execute immediate 'grant all on hamlet.script to '          || p_username;
-  execute immediate 'grant all on hamlet.testing_log to '     || p_username;
-  execute immediate 'grant all on hamlet.hamlet to '          || p_username;
+  execute immediate 'grant all on hamlet_seq to '      || p_username;
+  execute immediate 'grant all on test_suite to '      || p_username;
+  execute immediate 'grant all on test_case to '       || p_username;
+  execute immediate 'grant all on test_param to '      || p_username;
+  execute immediate 'grant all on test_execution to '  || p_username;
+  execute immediate 'grant all on execution_param to ' || p_username;
+  execute immediate 'grant all on script to '          || p_username;
+  execute immediate 'grant all on testing_log to '     || p_username;
+  execute immediate 'grant all on hamlet to '          || p_username;
 end;
 
 end hamlet;
