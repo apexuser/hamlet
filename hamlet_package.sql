@@ -60,18 +60,19 @@ end;
 
 procedure set_execution_params is
 begin
-  insert into execution_param (test_execution_id, test_case_id, parameter_type, parameter_name, 
+  insert into execution_param (execution_param_id, test_execution_id, test_case_id, parameter_type, parameter_name, 
                                num_value,    str_value,    dat_value)
-  select current_execution, test_case_id, parameter_type, parameter_name,
-         num_value,      str_value,    dat_value
-    from test_param
-   where test_case_id = current_testcase
-   minus
-  select test_execution_id, test_case_id, parameter_type, parameter_name,
-         num_value,    str_value,    dat_value
-    from execution_param
-   where test_case_id = current_testcase
-     and test_execution_id = current_execution;
+  select hamlet_seq.nextval, t.*
+    from (select current_execution, test_case_id, parameter_type, parameter_name,
+                 num_value,      str_value,    dat_value
+            from test_param
+           where test_case_id = current_testcase
+           minus
+          select test_execution_id, test_case_id, parameter_type, parameter_name,
+                 num_value,    str_value,    dat_value
+            from execution_param
+           where test_case_id = current_testcase
+             and test_execution_id = current_execution) t;
 end;
 
 procedure testsuite_setup(p_testsuite_id in number, p_ok out boolean) is
@@ -157,7 +158,7 @@ begin
              execute immediate get_run_string(i.script_package, i.script_proc);
            exception
              when others then
-               set_exec_param(PR_ACT, PR_EXCEPTION, SQLCODE || ': ' || SQLERRM || chr(10) || dbms_utility.format_error_backtrace);
+               set_exec_param(PR_ACT, PR_EXCEPTION	, SQLCODE || ': ' || SQLERRM || chr(10) || dbms_utility.format_error_backtrace);
            end;
         end if;
         testsuite_teardown(p_testsuite_id);
@@ -192,8 +193,8 @@ begin
   where tp.test_case_id = nvl(p_test_case_id, current_testcase)
     and tp.parameter_type = p_type
     and tp.parameter_name = p_name
-   when not matched then insert (test_case_id, parameter_type, parameter_name, num_value)
-                         values (nvl(p_test_case_id, current_testcase), p_type, p_name, p_value);
+   when not matched then insert (test_param_id, test_case_id, parameter_type, parameter_name, num_value)
+                         values (hamlet_seq.nextval, nvl(p_test_case_id, current_testcase), p_type, p_name, p_value);
 end;
 
 procedure set_param(p_type varchar2, p_name varchar2, p_value varchar2, p_test_case_id number := null) is
@@ -208,8 +209,8 @@ begin
   where tp.test_case_id = nvl(p_test_case_id, current_testcase)
     and tp.parameter_type = p_type
     and tp.parameter_name = p_name
-   when not matched then insert (test_case_id, parameter_type, parameter_name, str_value)
-                         values (nvl(p_test_case_id, current_testcase), p_type, p_name, p_value);
+   when not matched then insert (test_param_id, test_case_id, parameter_type, parameter_name, str_value)
+                         values (hamlet_seq.nextval, nvl(p_test_case_id, current_testcase), p_type, p_name, p_value);
 end;
 
 procedure set_param(p_type varchar2, p_name varchar2, p_value date, p_test_case_id number := null) is
@@ -224,8 +225,8 @@ begin
   where tp.test_case_id = nvl(p_test_case_id, current_testcase)
     and tp.parameter_type = p_type
     and tp.parameter_name = p_name
-   when not matched then insert (test_case_id, parameter_type, parameter_name, dat_value)
-                         values (nvl(p_test_case_id, current_testcase), p_type, p_name, p_value);
+   when not matched then insert (test_param_id, test_case_id, parameter_type, parameter_name, dat_value)
+                         values (hamlet_seq.nextval, nvl(p_test_case_id, current_testcase), p_type, p_name, p_value);
 end;
 
 procedure set_exec_param(p_type varchar2, p_name varchar2, p_value number) is
@@ -242,8 +243,8 @@ begin
     and ep.test_case_id = current_testcase
     and ep.parameter_type = p_type
     and ep.parameter_name = p_name
-   when not matched then insert (test_execution_id, test_case_id,     parameter_type, parameter_name, num_value)
-                         values (current_execution, current_testcase, p_type,         p_name,         p_value);
+   when not matched then insert (execution_param_id, test_execution_id, test_case_id,     parameter_type, parameter_name, num_value)
+                         values (hamlet_seq.nextval, current_execution, current_testcase, p_type,         p_name,         p_value);
 end;
 
 procedure set_exec_param(p_type varchar2, p_name varchar2, p_value varchar2) is
@@ -260,8 +261,8 @@ begin
     and ep.test_case_id = current_testcase
     and ep.parameter_type = p_type
     and ep.parameter_name = p_name
-   when not matched then insert (test_execution_id, test_case_id,     parameter_type, parameter_name, str_value)
-                         values (current_execution, current_testcase, p_type,         p_name,         p_value);
+   when not matched then insert (execution_param_id, test_execution_id, test_case_id,     parameter_type, parameter_name, str_value)
+                         values (hamlet_seq.nextval, current_execution, current_testcase, p_type,         p_name,         p_value);
 end;
 
 procedure set_exec_param(p_type varchar2, p_name varchar2, p_value date) is
@@ -278,8 +279,8 @@ begin
     and ep.test_case_id = current_testcase
     and ep.parameter_type = p_type
     and ep.parameter_name = p_name
-   when not matched then insert (test_execution_id, test_case_id,     parameter_type, parameter_name, dat_value)
-                         values (current_execution, current_testcase, p_type,         p_name,         p_value);
+   when not matched then insert (execution_param_id, test_execution_id, test_case_id,     parameter_type, parameter_name, dat_value)
+                         values (hamlet_seq.nextval, current_execution, current_testcase, p_type,         p_name,         p_value);
 end;
 
 procedure get_exec_param(p_name varchar2, p_value out number) is
