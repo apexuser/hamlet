@@ -1,6 +1,11 @@
 Example #1.
 
-This example contains minimum of code to demonstrate testing consept.
+This example contains minimum of code to demonstrate testing consept. Before running scripts, make sure that you have privileges to execute hamlet package and select, insert and update its tables. For example, you can run following script under SYSDBA or HAMLET user:
+
+begin
+  hamlet.hamlet.grant_execution_to_user('<your username>');
+end;
+/
 
 First of all - function to be tested. Let's take simple function - increment. 
 
@@ -12,9 +17,18 @@ begin
 end;
 /
 
-Now we need script that will test our function. Script have to take a parameter from database, pass it to function, get result and save it. There is no requirements to script: it can be anonymous block directly in SCRIPT table, stand-alone procedure (without parameters) or procedure in package. For example, let's write PL/SQL anonymous block (we don't need to run it, just write):
+Now we need script that will test our function. Script have to take a parameter from database, pass it to function, get result and save it. There is no requirements to script: it can be anonymous block directly in SCRIPT table, stand-alone procedure (without parameters) or procedure in package. For example, let's write package test_pkg:
 
-declare
+create or replace package test_pkg is
+
+procedure proc1;
+
+end test_pkg;
+/
+
+create or replace package body test_pkg is
+
+procedure proc1 is
   num number; -- number to pass
   res number; -- result of function
 begin
@@ -27,7 +41,13 @@ begin
   -- write to database results of calculation:
   hamlet.hamlet.set_exec_param(hamlet.hamlet.PR_ACT, 'RES', res);
 end;
+
+end test_pkg;
 /
+
+Also let's allow to user hamlet to run our package:
+
+grant execute on test_pkg to hamlet;
 
 Then we need to create a testsuite consisting of one test case. Code:
 
@@ -50,8 +70,8 @@ begin
   hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'RES', 2, test_case);
 
   -- and create script entries:
-  insert into hamlet.script(script_id, script_description, run_seq, script_type, test_suite_id, script_package, script_proc)
-  values (hamlet.hamlet_seq.nextval, 'Simple script', 1, hamlet.hamlet.SC_BODY, test_suite, 'tst_pkg', 'tst1');
+  insert into hamlet.script(script_id, script_description, run_seq, script_type, test_suite_id, script_owner, script_package, script_proc)
+  values (hamlet.hamlet_seq.nextval, 'Simple script', 1, hamlet.hamlet.SC_BODY, test_suite, user, 'test_pkg', 'proc1');
 
   commit;
   dbms_output.put_line('Preparation script successfully finished.');
@@ -59,11 +79,32 @@ end;
 /
 
 Now, as we can see in our console output, all preparations is done. It's time to run script!
-We just need to select rows from TEST_SUITE table to know our test suite ID.
+We just need to select rows from TEST_SUITE table to know our test suite ID:
+
+SQL> select * from hamlet.test_suite;
+
+TEST_SUITE_ID  PARENT_ID TEST_SUITE_DESCRIPTION
+------------- ---------- ----------------------
+	    1		 Simplest test suite
+
+
+As we can see, we have now only one testsuite with ID = 1. We pass this value to function RUN_TESTSUITE (which runs testsuite with passed ID):
 
 Code:
 
 begin
   hamlet.hamlet.run_testsuite(1);
+  commit;
 end;
 /
+
+Now let's look at results:
+
+SQL> select test_suite_id, description, test_case_description, exec_parameters, expected_parameters, actual_parameters 
+from hamlet.test_result;
+
+TEST_SUITE_ID DESCRIPTION	   TEST_CASE_DESCRIPTION EXEC_PARAMETERS      EXPECTED_PARAMETERS  ACTUAL_PARAMETERS
+------------- -------------------- --------------------- -------------------- -------------------- --------------------
+	    1 Simplest test suite  Simplest test case    NUM = 1              RES = 2              RES = 2
+
+We see following. One testsuite was run, it consists of 1 testcase. In this testcase value '1' for parameter 'NUM' was used, value '2' for parameter 'RES' was expected and the same value was received, that means our test was successfully passed. Congratulations!
