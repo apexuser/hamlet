@@ -1,0 +1,69 @@
+Example #1.
+
+This example contains minimum of code to demonstrate testing consept.
+
+First of all - function to be tested. Let's take simple function - increment. 
+
+Code:
+
+create or replace function incr(num integer) return number is
+begin
+  return num + 1;
+end;
+/
+
+Now we need script that will test our function. Script have to take a parameter from database, pass it to function, get result and save it. There is no requirements to script: it can be anonymous block directly in SCRIPT table, stand-alone procedure (without parameters) or procedure in package. For example, let's write PL/SQL anonymous block (we don't need to run it, just write):
+
+declare
+  num number; -- number to pass
+  res number; -- result of function
+begin
+  -- read parameter's values from database:
+  hamlet.hamlet.get_exec_param('NUM', num);
+
+  -- execute function:
+  res := incr(num);
+
+  -- write to database results of calculation:
+  hamlet.hamlet.set_exec_param(hamlet.hamlet.PR_ACT, 'RES', res);
+end;
+/
+
+Then we need to create a testsuite consisting of one test case. Code:
+
+declare
+  test_suite number;
+  test_case  number;
+  x1 number;
+  x2 number;
+begin
+  -- create new test suite:
+  test_suite := hamlet.hamlet.new_testsuite('Simplest test suite');
+
+  -- create new test case for given test suite: 
+  test_case := hamlet.hamlet.new_testcase(test_suite, 'Simplest test case');
+  
+  -- create parameters for given test case:
+  -- input parameters for procedure:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_IN, 'NUM', 1, test_case);
+  -- expected result of procedure:
+  hamlet.hamlet.set_param(hamlet.hamlet.PR_EXP, 'RES', 2, test_case);
+
+  -- and create script entries:
+  insert into hamlet.script(script_id, script_description, run_seq, script_type, test_suite_id, script_package, script_proc)
+  values (hamlet.hamlet_seq.nextval, 'Simple script', 1, hamlet.hamlet.SC_BODY, test_suite, 'tst_pkg', 'tst1');
+
+  commit;
+  dbms_output.put_line('Preparation script successfully finished.');
+end;
+/
+
+Now, as we can see in our console output, all preparations is done. It's time to run script!
+We just need to select rows from TEST_SUITE table to know our test suite ID.
+
+Code:
+
+begin
+  hamlet.hamlet.run_testsuite(1);
+end;
+/
