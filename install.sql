@@ -3,6 +3,8 @@ create user &&USER identified by &&PASSWORD
 
 grant connect to &&USER;
 grant resource to &&USER;
+grant create view to &&USER;
+grant unlimited tablespace to &&USER;
 
 connect &&USER/&&PASSWORD
 
@@ -107,10 +109,13 @@ select ts.test_suite_id,
           from hamlet.test_execution t) te
  where ep.test_case_id = tc.test_case_id
    and te.test_suite_id = ts.test_suite_id
-   and ep.test_execution_id = te.id
+   and ep.test_execution_id = te.test_execution_id
    and te.rn = 1
- group by ts.test_suite_description, 
-          'Test ID = ' || to_char(te.id) || ' (' || to_char(tc.test_case_id) || ', ' || to_char(te.execution_date, 'HH24:MI:SS') || ')',
+ group by ts.test_suite_id,
+          ts.test_suite_description,
+          te.test_execution_id,
+          tc.test_case_id,
+          te.execution_date,
           tc.test_case_description;
 
 @hamlet_package.sql
