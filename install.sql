@@ -54,6 +54,7 @@ create table script(
   run_seq            number,
   script_type        varchar2(10),
   test_suite_id      number,
+  script_owner       varchar2(30),
   script_package     varchar2(30),
   script_proc        varchar2(30));
 
@@ -85,7 +86,7 @@ alter table script          add constraint fk_script_suite   foreign key (test_s
 alter table testing_log     add constraint fk_log_suite      foreign key (testsuite_id)      references test_suite    (test_suite_id);
 alter table testing_log     add constraint fk_log_exec       foreign key (execution_id)      references test_execution(test_execution_id);
 
-create or replace view test_results as
+create or replace view test_result as
 select ts.test_suite_id,
        ts.test_suite_description description,
        te.test_execution_id,

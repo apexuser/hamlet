@@ -139,7 +139,7 @@ begin
   values (current_execution, p_testsuite_id, sysdate, nvl(v('APP_USER'), user));
   
   for i in (
-    select s.script_package, s.script_proc, s.run_seq, t.test_case_id
+    select s.script_owner, s.script_package, s.script_proc, s.run_seq, t.test_case_id
       from script s,
            test_case t
      where s.test_suite_id = p_testsuite_id
@@ -155,7 +155,12 @@ begin
         if v_ok then
            set_execution_params;
            begin
-             execute immediate get_run_string(i.script_package, i.script_proc);
+             execute immediate 
+             'begin ' ||
+              case when i.script_owner   is not null then i.script_owner   || '.' else null end ||
+              case when i.script_package is not null then i.script_package || '.' else null end ||
+              case when i.script_proc    is not null then i.script_proc    || ';' else null end ||
+             'end;';
            exception
              when others then
                set_exec_param(PR_ACT, PR_EXCEPTION	, SQLCODE || ': ' || SQLERRM || chr(10) || dbms_utility.format_error_backtrace);
@@ -367,6 +372,7 @@ begin
   execute immediate 'grant select, insert, update on execution_param to ' || p_username;
   execute immediate 'grant select, insert, update on script to '          || p_username;
   execute immediate 'grant select, insert, update on testing_log to '     || p_username;
+  execute immediate 'grant select  on test_result to '                    || p_username;
   execute immediate 'grant execute on hamlet to '                         || p_username;
 end;
 
@@ -380,6 +386,7 @@ begin
   execute immediate 'grant all on execution_param to ' || p_username;
   execute immediate 'grant all on script to '          || p_username;
   execute immediate 'grant all on testing_log to '     || p_username;
+  execute immediate 'grant all on test_result to '     || p_username;
   execute immediate 'grant all on hamlet to '          || p_username;
 end;
 
