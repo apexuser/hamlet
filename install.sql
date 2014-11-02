@@ -4,6 +4,7 @@ create user &&USER identified by &&PASSWORD
 grant connect to &&USER;
 grant resource to &&USER;
 grant create view to &&USER;
+grant create procedure to &&USER;
 grant unlimited tablespace to &&USER;
 
 connect &&USER/&&PASSWORD
@@ -12,5 +13,8 @@ connect &&USER/&&PASSWORD
 
 @hamlet_package.sql
 
+@hamlet_package_body.sql
+
+show errors
 quit
 /
