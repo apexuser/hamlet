@@ -10,6 +10,9 @@ PR_ACT constant varchar2(3) := 'ACT';
 PR_ERR constant varchar2(3) := 'ERR';
 PR_EXCEPTION constant varchar2(10) := 'EXCEPTION';
 
+-- error constants
+TESTSUITE_NOT_FOUND constant number := -20001;
+
 type parameter is record(
      param_name varchar2(30),
      param_type varchar2(10),

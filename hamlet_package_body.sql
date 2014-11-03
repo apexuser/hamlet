@@ -1,8 +1,11 @@
 create or replace package body hamlet is
 
+  -- IDs of current execution and testcase is a part of global execution context
+  -- during run of procedure RUN_TESTSUITE 
   current_execution number;
   current_testcase  number;
   
+  -- types for preparation of test parameters
   type t_argument is record(
        arg_name  varchar2(30),
        data_type varchar2(30),
@@ -10,7 +13,26 @@ create or replace package body hamlet is
      
   type t_arg_list is table of t_argument /*index by binary_integer*/;
 
+  cursor proc_testsuite(p_owner varchar2, p_package varchar2, p_procedure varchar2) is
+    select test_suite_id
+      from test_suite
+     where owner = p_owner
+       and nvl(package_name, '*') = nvl(p_package, '*')
+       and procedure_name = p_procedure;
 
+  cursor testsuite_script(p_testsuite_id number, p_script_type varchar2 default SC_BODY) is
+    select script_id
+      from script
+     where test_suite_id = p_testsuite_id
+       and script_type = p_script_type;
+
+function get_full_name(p_owner varchar2, p_package varchar2, p_procedure varchar2) return varchar2 is
+begin
+  return 
+    case when p_owner     is not null then p_owner     || '.' else null end ||
+    case when p_package   is not null then p_package   || '.' else null end ||
+    case when p_procedure is not null then p_procedure else null end;
+end;
 
 function get_run_string(p_pkg in varchar2, p_prc in varchar2) return varchar2 is
 begin
@@ -27,7 +49,7 @@ procedure write_to_log(p_place in varchar2, p_message in varchar2,
   pragma autonomous_transaction;
 begin
   insert into testing_log(log_id, place, message, testsuite_id, execution_id, sql_code, sql_message, executed_by, executed_on)
-  values (hamlet_seq.nextval, p_place, p_message, p_testsuite_id, p_execution_id, p_sqlcode, p_sqlmessage, nvl(v('APP_USER'), user), sysdate);
+  values (hamlet_seq.nextval, p_place, p_message, p_testsuite_id, p_execution_id, p_sqlcode, p_sqlmessage, user, sysdate);
   
   commit;
 end;
@@ -110,7 +132,7 @@ begin
   
   current_execution := hamlet_seq.nextval;
   insert into test_execution(test_execution_id, test_suite_id, execution_date, execution_user)
-  values (current_execution, p_testsuite_id, sysdate, nvl(v('APP_USER'), user));
+  values (current_execution, p_testsuite_id, sysdate, user);
   
   for i in (
     select s.script_owner, s.script_package, s.script_proc, s.run_seq, t.test_case_id
@@ -164,12 +186,14 @@ procedure run_testsuite(p_owner in varchar2, p_package in varchar2, p_procedure 
   ts_id number;
   err_count number;
 begin
-    select test_suite_id
-    into ts_id
-    from test_suite
-   where owner = p_owner
-     and nvl(package_name, '*') = nvl(p_package, '*')
-     and procedure_name = p_procedure;
+  open proc_testsuite(p_owner, p_package, p_procedure);
+  fetch proc_testsuite into ts_id;
+
+  if proc_testsuite%notfound then
+     raise_application_error(TESTSUITE_NOT_FOUND, 
+       'Testsuite for object ' || get_full_name(p_owner, p_package, p_procedure) || ' not found. Testsuite run is impossible.');
+  end if;
+  close proc_testsuite;
   
   run_testsuite(ts_id);
   
@@ -184,6 +208,11 @@ begin
      dbms_output.put_line('Test is not passed! Found ' || err_count || ' errors. See view test_result for details.');
      dbms_output.put_line('Testsiute ID = ' || ts_id);
   end if;
+
+exception
+  when others then
+    close proc_testsuite;
+    raise;
 end;
 
 procedure set_param(p_type varchar2, p_name varchar2, p_value number, p_test_case_id number := null) is
@@ -459,19 +488,36 @@ end;*/
 procedure create_test(p_owner in varchar2, p_package in varchar2, p_procedure in varchar2, 
                       p_testsuite_description in varchar2 default null, p_include_in_package in number default 1, 
                       p_test_package_name in varchar2 default null, p_test_procedure_name in varchar2 default null) is
-  test_suite number;
+  ts_id number;
+  scr_id number;
   
   pkg_declaration clob;
   pkg_body clob;
   proc_name varchar2(30);
   pkg_name varchar2(30);
 begin
-  insert into test_suite(test_suite_id, owner, package_name, procedure_name, include_in_package, test_suite_description)
-  values (hamlet_seq.nextval, p_owner, p_package, p_procedure, p_include_in_package, p_testsuite_description)
-  returning test_suite_id into test_suite;  
+  open proc_testsuite(p_owner, p_package, p_procedure);
+  fetch proc_testsuite into ts_id;
+
+  if proc_testsuite%notfound then
+     insert into test_suite(test_suite_id, owner, package_name, procedure_name, include_in_package, test_suite_description)
+     values (hamlet_seq.nextval, p_owner, p_package, p_procedure, p_include_in_package, p_testsuite_description)
+     returning test_suite_id into ts_id;  
   
-  proc_name := substr(nvl(p_test_procedure_name, 'test_proc_' || test_suite), 1, 30);
+  end if;
+  close proc_testsuite;
+
+  proc_name := substr(nvl(p_test_procedure_name, 'test_proc_' || ts_id), 1, 30);
   
+  open testsuite_script(ts_id);
+  fetch testsuite_script into scr_id;
+  if testsuite_script%notfound then
+     insert into script(script_id, script_description, run_seq, script_type, test_suite_id, 
+                        script_owner, script_package, script_proc)
+     values (hamlet_seq.nextval, 'Simple script', 1, SC_BODY, ts_id, 'HAMLET', pkg_name, proc_name);
+  end if;
+  close testsuite_script;
+
   if p_include_in_package = 0 then
      execute immediate 
      create_test_procedure(p_owner, p_package, p_procedure, proc_name);
@@ -479,10 +525,7 @@ begin
      --execute immediate create_test_package();
      --execute immediate create_test_package_body();
   end if;
-  
-  insert into script(script_id, script_description, run_seq, script_type, test_suite_id, 
-                     script_owner, script_package, script_proc)
-  values (hamlet_seq.nextval, 'Simple script', 1, SC_BODY, test_suite, 'HAMLET', pkg_name, proc_name);
+
 end;
 
 procedure add_testcase(p_owner in varchar2, p_package in varchar2, p_procedure in varchar2, 
@@ -490,12 +533,14 @@ procedure add_testcase(p_owner in varchar2, p_package in varchar2, p_procedure i
   ts_id number;
   tc_id number;
 begin
-  select test_suite_id
-    into ts_id
-    from test_suite
-   where owner = p_owner
-     and nvl(package_name, '*') = nvl(p_package, '*')
-     and procedure_name = p_procedure;
+  open proc_testsuite(p_owner, p_package, p_procedure);
+  fetch proc_testsuite into ts_id;
+
+  if proc_testsuite%notfound then
+     raise_application_error(TESTSUITE_NOT_FOUND, 
+       'Testsuite for object ' || get_full_name(p_owner, p_package, p_procedure) || ' not found. Testcase creation is impossible.');
+  end if;
+  close proc_testsuite;
 
   insert into test_case(test_case_id, test_suite_id, test_case_description)
   values(hamlet_seq.nextval, ts_id, p_test_case_description)
@@ -508,11 +553,9 @@ begin
            p_parameters(i).num_value, p_parameters(i).str_value, p_parameters(i).dat_value);
 
 exception
-  when no_data_found then
-    raise_application_error(-20003, 'Testsuite for object ' ||
-      case when p_owner     is not null then p_owner     || '.' else null end ||
-      case when p_package   is not null then p_package   || '.' else null end ||
-      case when p_procedure is not null then p_procedure else null end || ' not found. Testcase creation is impossible.');
+  when others then
+    close proc_testsuite;
+    raise;
 end;
 
 procedure grant_execution_to_user(p_username in varchar2) is
